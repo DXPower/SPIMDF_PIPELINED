@@ -12,44 +12,129 @@ using namespace SPIMDF;
 #define EX_NULL(X) EX_FUNC(X) { printf(#X " executor undefined"); }
 #define PR_NULL(X) PR_FUNC(X) { return std::string(#X " printer undefined"); }
 
+// Category 1
+
 EX_FUNC(J) {
-    printf("Execute jump!\n");
+    const ISA::JType& format = in.GetFormat<ISA::JType>();
+    cpu.Jump((cpu.GetPC() & 0xF0000000) | (format.index << 2));
 }
 
-// Category 1
-EX_NULL(JR); 
-EX_NULL(BEQ);
-EX_NULL(BLTZ);
-EX_NULL(BGTZ);
-EX_NULL(SW); 
-EX_NULL(LW); 
-EX_NULL(SLL);
-EX_NULL(SRL);
-EX_NULL(SRA);
-EX_NULL(NOP);
+EX_FUNC(JR) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Jump(cpu.Reg(format.rs));
+}
+
+EX_FUNC(BEQ) {
+    const ISA::IType& format = in.GetFormat<ISA::IType>();
+
+    if (cpu.Reg(format.rs) == cpu.Reg(format.rt))
+        cpu.Jump(cpu.GetPC() + (format.imm * 4));
+}
+
+EX_FUNC(BLTZ) {
+    const ISA::IType& format = in.GetFormat<ISA::IType>();
+
+    if (cpu.Reg(format.rs) < 0)
+        cpu.Jump(cpu.GetPC() + (format.imm * 4));
+}
+
+EX_FUNC(BGTZ) {
+    const auto& format = in.GetFormat<ISA::IType>();
+
+    if (cpu.Reg(format.rs) > 0)
+        cpu.Jump(cpu.GetPC() + (format.imm * 4));
+}
+
+EX_FUNC(SW) {
+    const auto& format = in.GetFormat<ISA::IType>();
+    cpu.Mem(cpu.Reg(format.rs) + format.imm) = cpu.Reg(format.rt);
+}
+
+EX_FUNC(LW) {
+    const auto& format = in.GetFormat<ISA::IType>();
+    cpu.Reg(format.rt) = cpu.Mem(cpu.Reg(format.rs) + format.imm);
+}
+
+EX_FUNC(SLL) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rt) << format.sa;
+}
+
+EX_FUNC(SRL) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    // Cast to unsigned int to do guarantee logical shift, then shift by shamt
+    cpu.Reg(format.rd) = static_cast<int32_t>(static_cast<uint32_t>(cpu.Reg(format.rt)) >> format.sa);
+}
+
+EX_FUNC(SRA) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rt) >> format.sa;
+}
+
+EX_FUNC(NOP) { }
+
 EX_NULL(BRK);
+
 // Category 2
 EX_FUNC(ADD) {
-    const ISA::RType& format = in.GetFormat<ISA::RType>();
+    const auto& format = in.GetFormat<ISA::RType>();
     cpu.Reg(format.rd) = cpu.Reg(format.rs) + cpu.Reg(format.rt);
 }
 
-EX_NULL(SUB); 
-EX_NULL(MUL); 
-EX_NULL(AND); 
-EX_NULL(OR);  
-EX_NULL(XOR); 
-EX_NULL(NOR); 
-EX_NULL(SLT);
+EX_FUNC(SUB) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rs) - cpu.Reg(format.rt);
+}
+
+EX_FUNC(MUL) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rs) * cpu.Reg(format.rt);
+}
+
+EX_FUNC(AND) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rs) & cpu.Reg(format.rt);
+}
+
+EX_FUNC(OR) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rs) | cpu.Reg(format.rt);
+} 
+
+EX_FUNC(XOR) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rs) ^ cpu.Reg(format.rt);
+}
+
+EX_FUNC(NOR) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = ~(cpu.Reg(format.rs) | cpu.Reg(format.rt));
+}
+
+EX_FUNC(SLT) {
+    const auto& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rs) < cpu.Reg(format.rt);
+}
 
 EX_FUNC(ADDI) {
-    const ISA::IType& format = in.GetFormat<ISA::IType>();
+    const auto& format = in.GetFormat<ISA::IType>();
     cpu.Reg(format.rt) = cpu.Reg(format.rs) + format.imm;
 }
 
-EX_NULL(ANDI);
-EX_NULL(ORI); 
-EX_NULL(XORI);
+EX_FUNC(ANDI) {
+    const auto& format = in.GetFormat<ISA::IType>();
+    cpu.Reg(format.rt) = cpu.Reg(format.rs) & static_cast<uint32_t>(format.imm); // Zero extend immediate
+}
+
+EX_FUNC(ORI) {
+    const auto& format = in.GetFormat<ISA::IType>();
+    cpu.Reg(format.rt) = cpu.Reg(format.rs) | static_cast<uint32_t>(format.imm); // Zero extend immediate
+}
+
+EX_FUNC(XORI) {
+    const auto& format = in.GetFormat<ISA::IType>();
+    cpu.Reg(format.rt) = cpu.Reg(format.rs) ^ static_cast<uint32_t>(format.imm); // Zero extend immediate
+}
 
 std::string String_RType(const char* opcode, const ISA::RType& format) {
     std::ostringstream ss;
@@ -127,9 +212,6 @@ PR_FUNC(SW) {
 
     return ss.str();
 }
-
-// 010111 10000 00011 0000000101010100
-// opcode base  rt    imm
 
 PR_FUNC(LW) {
     const ISA::IType& format = in.GetFormat<ISA::IType>();

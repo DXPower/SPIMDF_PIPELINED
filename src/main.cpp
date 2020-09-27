@@ -23,13 +23,15 @@ int main() {
     
 
     while (std::cin.get() == '\n') {
+        printf("--------------------\n");
         printf("Cycle %lu:\t%u\t%s\n\n", cpu.GetCycle(), cpu.GetPC(), cpu.CurInstr().ToString().c_str());
         cpu.Clock();
 
-        printf("\nRegisters\n");
+        // Print registers
         uint8_t base = 0;
+        printf("Registers\n");
 
-        for (uint8_t i = 0; i < 4; i++) {
+        for (uint8_t row = 0; row < 4; row++) {
             printf(
                 "R%02u:\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\n"
                 , base
@@ -38,6 +40,24 @@ int main() {
             );
 
             base += 8;
+        }
+
+        // Print memory
+        uint8_t word = 0;
+        printf("\nData\n");
+
+        for (auto [addr, datum] : cpu.GetAllMem()) {
+            if (word == 0)
+                printf("%u:\t", addr);
+            
+            printf("%i", datum, word);
+
+            if (word++ != 7)
+                printf("\t");
+            else {
+                word = 0;
+                printf("\n");
+            }
         }
     }
 }

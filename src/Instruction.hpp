@@ -11,18 +11,6 @@
 
 namespace SPIMDF {
     namespace detail {
-        // template<auto FA, auto FB>
-        // struct SameFunctionPointer {
-        //     using _detail = std::enable_if_t<FA == FB>;
-        //     static constexpr bool value = true;
-        // };
-
-        // template<auto FA, auto FB>
-        // struct SameFunctionPointer {
-        //     using _detail = std::enable_if_t<!std::is_same_v<FA, FB>>;
-        //     static constexpr bool value = false;
-        // };
-
         template<auto FA, auto FB>
         constexpr std::enable_if_t<FA == FB || FA != FB, bool> SameFunctionPointer() {
             return FA == FB;

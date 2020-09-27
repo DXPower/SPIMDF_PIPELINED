@@ -7,12 +7,11 @@ namespace SPIMDF {
     class CPU {
         std::map<uint32_t, Instruction> program;
         std::map<uint32_t, int32_t> memory;
-        std::array<int32_t, 32> registers { 5, 4, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                                           , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        std::array<int32_t, 32> registers { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                                          , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
         uint64_t cycle = 1;
         uint32_t pc;
-        bool didJump = false;
 
         public:
         CPU(uint32_t pc = 0) : pc(pc) { };
@@ -24,6 +23,7 @@ namespace SPIMDF {
         const Instruction& CurInstr() const { return Instr(pc); };
 
         int32_t& Mem(uint32_t addr) { return memory[addr]; };
+        const auto& GetAllMem() const { return memory; };
 
         int32_t& Reg(uint8_t regAddr) { return registers[regAddr]; };
         const int32_t& Reg(uint8_t regAddr) const { return registers[regAddr]; };
@@ -32,20 +32,16 @@ namespace SPIMDF {
         uint64_t GetCycle() const { return cycle; };
 
         void Clock() {
-            Instr(pc).Execute(*this);
-
-            if (!didJump) {
-                pc += 4;
-            }
+            // Point PC to delay slot to support correct branching operation
+            pc += 4; // PC now points to delay slot
+            Instr(pc - 4).Execute(*this); // But execute the current instruction
 
             cycle++;
-            didJump = false;
         };
 
         // Sets PC = addr
         void Jump(uint32_t addr) {
             pc = addr;
-            didJump = true;
         }
     };
 }
