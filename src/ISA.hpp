@@ -45,9 +45,25 @@ xori 1011
 #include <variant>
 #include <type_traits>
 #include <cstdint>
+#include <cmath>
 #include <string>
 
 namespace SPIMDF {
+    inline int32_t FromTwosComp(std::string mach) {
+        int32_t val = 0;
+        
+        for (size_t i = 0; i < mach.size(); i++) {
+            if (mach[mach.size() - i - 1] == '1') {
+                if (i != mach.size() - 1)
+                    val += std::pow(2, i);
+                else
+                    val -= std::pow(2, i); // MSB is negative its normal power
+            }
+        }
+
+        return val;
+    }
+
     namespace ISA {
         using namespace std;
 
@@ -143,19 +159,19 @@ namespace SPIMDF {
 
         struct IType {
             private:
-            std::tuple<uint_least8_t, uint_least8_t, uint_least16_t> fields;
+            std::tuple<uint_least8_t, uint_least8_t, int_least16_t> fields;
             inline const static std::array<const char*, 3> names = { "rs", "rt", "imm" };
 
             public:
             uint_least8_t&  rs  = std::get<0>(fields);
             uint_least8_t&  rt  = std::get<1>(fields);
-            uint_least16_t& imm = std::get<2>(fields);    
+            int_least16_t& imm = std::get<2>(fields);    
 
 
             constexpr IType(const IType& copy) : fields(copy.fields) { }
             constexpr IType(const decltype(fields)& fields) : fields(fields) { };
 
-            constexpr IType(uint8_t rs, uint8_t rt, uint16_t imm) {
+            constexpr IType(uint8_t rs, uint8_t rt, int16_t imm) {
                 this->rs = rs;
                 this->rt = rt;
                 this->imm = imm;
@@ -167,7 +183,7 @@ namespace SPIMDF {
             }
 
             void Print() const {
-                std::array<uint_least16_t, 3> fieldsArray{ rs, rt, imm };
+                std::array<int32_t, 3> fieldsArray{ rs, rt, imm };
 
                 FieldRep::Print(fieldsArray.cbegin(), fieldsArray.cend(), names.cbegin());
             };
@@ -179,19 +195,19 @@ namespace SPIMDF {
                     // Decode from machine code!
                     std::string mach = std::get<0>(std::tie(a...)); // Get the machine code string, which will be the first argument
                     return IType(
-                          static_cast<uint8_t>(IsVar<RS>()   ? std::stoi(mach.substr(6, 5)  , nullptr, 2) : RS)
-                        , static_cast<uint8_t>(IsVar<RT>()   ? std::stoi(mach.substr(11, 5) , nullptr, 2) : RT)
-                        , static_cast<uint16_t>(IsVar<IMM>() ? std::stoi(mach.substr(16, 16), nullptr, 2) : IMM)
+                          static_cast<uint8_t>(IsVar<RS>()  ? std::stoi(mach.substr(6, 5)  , nullptr, 2) : RS)
+                        , static_cast<uint8_t>(IsVar<RT>()  ? std::stoi(mach.substr(11, 5) , nullptr, 2) : RT)
+                        , static_cast<int16_t>(IsVar<IMM>() ? FromTwosComp(mach.substr(16, 16))          : IMM)
                     );
                 } else {
                     // Decode from passed arguments
-                    std::array<uint32_t, sizeof...(Args)> args{a...};     
+                    std::array<int32_t, sizeof...(Args)> args{a...};     
                     char curArg = 0;
 
                     std::tuple<uint_least8_t, uint_least8_t, uint_least16_t> fields {
-                        static_cast<uint8_t>  ( IsVar<RS>()  ? args[curArg++] : RS )
-                        , static_cast<uint8_t>( IsVar<RT>()  ? args[curArg++] : RT )
-                        , static_cast<uint16_t>(IsVar<IMM>() ? args[curArg++] : IMM)
+                          static_cast<uint8_t>( IsVar<RS>() ? args[curArg++] : RS )
+                        , static_cast<uint8_t>( IsVar<RT>() ? args[curArg++] : RT )
+                        , static_cast<int16_t>(IsVar<IMM>() ? args[curArg++] : IMM)
                     };
 
                     return IType(fields);
@@ -233,7 +249,7 @@ namespace SPIMDF {
             }
 
             static JType Decode(const std::string& mach) {
-                return JType(std::stoi(mach.substr(6, 26), nullptr, 2));
+                return JType(FromTwosComp(mach.substr(6, 26)));
             }
         };
 
@@ -243,11 +259,11 @@ namespace SPIMDF {
             // Cat1
             inline constexpr auto J    = JType::Factory<Var>;
             inline constexpr auto JR   = RType::Factory<Var, 0, 0, 0, 8, uint8_t>;
-            inline constexpr auto BEQ  = IType::Factory<Var, Var, Var, uint8_t, uint8_t, uint16_t>;
-            inline constexpr auto BLTZ = IType::Factory<Var, 0, Var, uint8_t, uint16_t>;
-            inline constexpr auto BGTZ = IType::Factory<Var, 0, Var, uint8_t, uint16_t>;
-            inline constexpr auto SW   = IType::Factory<Var, Var, Var, uint8_t, uint8_t, uint16_t>;
-            inline constexpr auto LW   = IType::Factory<Var, Var, Var, uint8_t, uint8_t, uint16_t>;
+            inline constexpr auto BEQ  = IType::Factory<Var, Var, Var, uint8_t, uint8_t, int16_t>;
+            inline constexpr auto BLTZ = IType::Factory<Var, 0, Var, uint8_t, int16_t>;
+            inline constexpr auto BGTZ = IType::Factory<Var, 0, Var, uint8_t, int16_t>;
+            inline constexpr auto SW   = IType::Factory<Var, Var, Var, uint8_t, uint8_t, int16_t>;
+            inline constexpr auto LW   = IType::Factory<Var, Var, Var, uint8_t, uint8_t, int16_t>;
             inline constexpr auto SLL  = RType::Factory<0, Var, Var, Var, 0, uint8_t, uint8_t, uint8_t>;
             inline constexpr auto SRL  = RType::Factory<0, Var, Var, Var, 2, uint8_t, uint8_t, uint8_t>;
             inline constexpr auto SRA  = RType::Factory<0, Var, Var, Var, 3, uint8_t, uint8_t, uint8_t>;
@@ -279,10 +295,10 @@ namespace SPIMDF {
             inline constexpr auto XOR  = RType::Factory<Var, Var, Var, 0, 0, uint8_t, uint8_t, uint8_t>;
             inline constexpr auto NOR  = RType::Factory<Var, Var, Var, 0, 0, uint8_t, uint8_t, uint8_t>;
             inline constexpr auto SLT  = RType::Factory<Var, Var, Var, 0, 0, uint8_t, uint8_t, uint8_t>;
-            inline constexpr auto ADDI = IType::Factory<Var, Var, Var, uint8_t, uint8_t, uint16_t>;
-            inline constexpr auto ANDI = IType::Factory<Var, Var, Var, uint8_t, uint8_t, uint16_t>;
-            inline constexpr auto ORI  = IType::Factory<Var, Var, Var, uint8_t, uint8_t, uint16_t>;
-            inline constexpr auto XORI = IType::Factory<Var, Var, Var, uint8_t, uint8_t, uint16_t>;
+            inline constexpr auto ADDI = IType::Factory<Var, Var, Var, uint8_t, uint8_t, int16_t>;
+            inline constexpr auto ANDI = IType::Factory<Var, Var, Var, uint8_t, uint8_t, int16_t>;
+            inline constexpr auto ORI  = IType::Factory<Var, Var, Var, uint8_t, uint8_t, int16_t>;
+            inline constexpr auto XORI = IType::Factory<Var, Var, Var, uint8_t, uint8_t, int16_t>;
             
             inline constexpr auto Decode_ADD  = RType::Factory<Var, Var, Var, 0, 0, DECODE_ARGS>;
             inline constexpr auto Decode_SUB  = RType::Factory<Var, Var, Var, 0, 0, DECODE_ARGS>;
@@ -328,6 +344,33 @@ namespace SPIMDF {
         inline constexpr auto ANDI = &detail::ANDI;
         inline constexpr auto ORI  = &detail::ORI;
         inline constexpr auto XORI = &detail::XORI;
+
+        enum class Opcode {
+              J   
+            , JR  
+            , BEQ 
+            , BLTZ
+            , BGTZ
+            , SW  
+            , LW  
+            , SLL 
+            , SRL 
+            , SRA 
+            , NOP 
+            , BRK
+            , ADD 
+            , SUB 
+            , MUL 
+            , AND 
+            , OR  
+            , XOR 
+            , NOR 
+            , SLT 
+            , ADDI
+            , ANDI
+            , ORI 
+            , XORI
+        };
     }
     
 }

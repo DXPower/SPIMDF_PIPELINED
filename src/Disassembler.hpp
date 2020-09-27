@@ -3,5 +3,7 @@
 #include <map>
 
 namespace SPIMDF {
-    void Disassemble(const char* filename);
+    class CPU;
+
+    void Disassemble(const char* filename, CPU& cpu);
 }

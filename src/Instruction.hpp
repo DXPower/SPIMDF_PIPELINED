@@ -36,9 +36,11 @@ namespace SPIMDF {
 
     class Instruction {
         public:
-        using Executor_g = void(const Instruction&);
+        using Executor_g = void(CPU& cpu, const Instruction&);
         using Printer_g = std::string(const Instruction&);
         using EP = std::pair<std::function<Executor_g>, std::function<Printer_g>>;
+
+        ISA::Opcode opcode;
 
         private:
         std::function<Executor_g> executor;
@@ -48,16 +50,16 @@ namespace SPIMDF {
         public:
 
         template<class Format>
-        Instruction(Format&& fm, const EP& ep)
-        : format(fm), executor(ep.first), printer(ep.second) { }
+        Instruction(ISA::Opcode opcode, Format&& fm, const EP& ep)
+        : opcode(opcode), format(fm), executor(ep.first), printer(ep.second) { }
 
         template<class Format>
         const Format& GetFormat() const {
             return std::get<Format>(format);
         }
 
-        void Execute() const {
-            executor(*this);
+        void Execute(CPU& cpu) const {
+            executor(cpu, *this);
         }
 
         std::string ToString() const {
@@ -72,7 +74,7 @@ namespace SPIMDF {
         static Instruction CreateFromFormat(const Format& format) {
             #define DEF_IN(X) \
             if constexpr (detail::SameFunctionPointer<Factory, ISA::X>()) \
-                return Instruction(format, std::make_pair(std::function(Executors::X), std::function(Printers::X)))
+                return Instruction(ISA::Opcode::X, format, std::make_pair(std::function(Executors::X), std::function(Printers::X)))
             
             // Category 1
             DEF_IN(J);  
@@ -86,6 +88,7 @@ namespace SPIMDF {
             else DEF_IN(SRL); 
             else DEF_IN(SRA); 
             else DEF_IN(NOP);
+            else DEF_IN(BRK);
 
             // Category 2
             else DEF_IN(ADD); 
@@ -111,7 +114,7 @@ namespace SPIMDF {
         static Instruction Create(Args&&... args) {
             #define DEF_IN(X) \
             if constexpr (detail::SameFunctionPointer<Factory, ISA::X>()) \
-                return Instruction((*ISA::X)(std::forward<Args>(args)...), std::make_pair(std::function(Executors::X), std::function(Printers::X)))
+                return Instruction(ISA::Opcode::X, (*ISA::X)(std::forward<Args>(args)...), std::make_pair(std::function(Executors::X), std::function(Printers::X)))
             
             // Category 1
             DEF_IN(J);  
@@ -125,6 +128,7 @@ namespace SPIMDF {
             else DEF_IN(SRL); 
             else DEF_IN(SRA); 
             else DEF_IN(NOP);
+            else DEF_IN(BRK);
 
             // Category 2
             else DEF_IN(ADD); 
@@ -145,5 +149,7 @@ namespace SPIMDF {
 
             #undef DEF_IN
         }
+
+        Instruction() : Instruction(Create<ISA::NOP>(0)) { }; // Default to just a NOP instruction
     };
 }

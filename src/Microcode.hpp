@@ -4,8 +4,9 @@
 
 namespace SPIMDF {
     class Instruction;
+    class CPU;
 
-    #define DEF_EX(X) void X(const Instruction& instr);
+    #define DEF_EX(X) void X(CPU& cpu, const Instruction& instr);
     #define DEF_PR(X) std::string X(const Instruction& instr);
 
     namespace Executors {
@@ -50,6 +51,7 @@ namespace SPIMDF {
         DEF_PR(SRL);
         DEF_PR(SRA);
         DEF_PR(NOP);
+        DEF_PR(BRK);
         // Category 2
         DEF_PR(ADD); 
         DEF_PR(SUB); 

@@ -1,7 +1,9 @@
+#include "CPU.hpp"
 #include <cstdio>
 #include "Disassembler.hpp"
 #include "ISA.hpp"
 #include "Instruction.hpp"
+#include <iostream>
 
 using namespace SPIMDF;
 
@@ -15,41 +17,27 @@ struct Foo {
 struct Foo foo = { .x = 2, .y = 3 };
 
 int main() {
-    SPIMDF::Disassemble("sample.txt");
-    Instruction jumper0 = Instruction::Create<ISA::J>(120);
-    // Instruction jumper1 = Instruction::Create<ISA::J>(123);
-    // Instruction jumper2 = Instruction::Create<ISA::J>(129);
+    CPU cpu(256);
 
-    jumper0.Print();
-    // jumper1.Print();
-    // jumper2.Print();
+    SPIMDF::Disassemble("sample.txt", cpu);
+    
 
-    // jumper2 = jumper0;
-    // jumper0 = Instruction::Create<ISA::J>(117);
+    while (std::cin.get() == '\n') {
+        printf("Cycle %lu:\t%u\t%s\n\n", cpu.GetCycle(), cpu.GetPC(), cpu.CurInstr().ToString().c_str());
+        cpu.Clock();
 
-    // jumper0.Print();
-    // jumper1.Print();
-    // jumper2.Print();
+        printf("\nRegisters\n");
+        uint8_t base = 0;
 
-    // auto adder = Instruction::Create<ISA::ADD>(20, 30, 10);
-    // auto adderI = Instruction::Create<ISA::ADDI>(21, 150, 20);
+        for (uint8_t i = 0; i < 4; i++) {
+            printf(
+                "R%02u:\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\n"
+                , base
+                , cpu.Reg(base + 0), cpu.Reg(base + 1), cpu.Reg(base + 2), cpu.Reg(base + 3)
+                , cpu.Reg(base + 4), cpu.Reg(base + 5), cpu.Reg(base + 6), cpu.Reg(base + 7)
+            );
 
-    // adder.Print();
-    // adderI.Print();
-    // adder.Execute();
-    // adderI.Execute();
-
-
-    // adder = Instruction::Create<ISA::SUB>(51, 52, 53);
-    // adderI = Instruction::Create<ISA::BEQ>(20, 10, 120);
-
-    // adder.Print();
-    // adderI.Print();
-
-    // jumper0 = Instruction::Create<ISA::JR>(20);
-    // jumper0.Print();
-
-    // auto bltz = Instruction::Create<ISA::BLTZ>(20, 430);
-    // bltz.Print();
-
+            base += 8;
+        }
+    }
 }

@@ -1,11 +1,12 @@
 #include "Microcode.hpp"
-#include "Instruction.hpp"
+#include "CPU.hpp"
 #include <cstdio>
+#include "Instruction.hpp"
 #include <sstream>
 
 using namespace SPIMDF;
 
-#define EX_FUNC(X) void Executors::X(const Instruction& in)
+#define EX_FUNC(X) void Executors::X(CPU& cpu, const Instruction& in)
 #define PR_FUNC(X) std::string Printers::X(const Instruction& in)
 
 #define EX_NULL(X) EX_FUNC(X) { printf(#X " executor undefined"); }
@@ -28,15 +29,24 @@ EX_NULL(SRA);
 EX_NULL(NOP);
 EX_NULL(BRK);
 // Category 2
-EX_NULL(ADD); 
+EX_FUNC(ADD) {
+    const ISA::RType& format = in.GetFormat<ISA::RType>();
+    cpu.Reg(format.rd) = cpu.Reg(format.rs) + cpu.Reg(format.rt);
+}
+
 EX_NULL(SUB); 
 EX_NULL(MUL); 
 EX_NULL(AND); 
 EX_NULL(OR);  
 EX_NULL(XOR); 
 EX_NULL(NOR); 
-EX_NULL(SLT); 
-EX_NULL(ADDI);
+EX_NULL(SLT);
+
+EX_FUNC(ADDI) {
+    const ISA::IType& format = in.GetFormat<ISA::IType>();
+    cpu.Reg(format.rt) = cpu.Reg(format.rs) + format.imm;
+}
+
 EX_NULL(ANDI);
 EX_NULL(ORI); 
 EX_NULL(XORI);
@@ -159,6 +169,10 @@ PR_FUNC(SRA) {
 
 PR_FUNC(NOP) {
     return "NOP";
+}
+
+PR_FUNC(BRK) {
+    return "BREAK";
 }
 
 // Category 2
