@@ -67,8 +67,6 @@ namespace SPIMDF {
     namespace ISA {
         using namespace std;
 
-        struct DecodeTag { };
-
         inline constexpr uint64_t Var = static_cast<uint64_t>(-1);
         
         template<auto T>
@@ -76,22 +74,16 @@ namespace SPIMDF {
             return T == Var;
         }
 
-        struct FieldRep {
-            template<typename FIter, typename NIter>
-            // requires requires (FIter fCur, NIter nCur) {
-            //     { *fCur + 1 } -> std::integral;
-            //     { *nCur } -> std::same_as<const char* const&>;
-            // }
-            static void Print(FIter fCur, const FIter& fEnd, NIter nCur) {
-                for (; fCur != fEnd; fCur++) {
-                    printf("%s: %u\t", *nCur, *fCur);
+        template<typename FIter, typename NIter>
+        static void FieldRepPrint(FIter fCur, const FIter& fEnd, NIter nCur) {
+            for (; fCur != fEnd; fCur++) {
+                printf("%s: %u\t", *nCur, *fCur);
 
-                    nCur++;
-                }
-
-                printf("\n");
+                nCur++;
             }
-        };
+
+            printf("\n");
+        }
 
         struct RType {
             private:
@@ -122,7 +114,7 @@ namespace SPIMDF {
             }
 
             void Print() const {
-                FieldRep::Print(fields.cbegin(), fields.cend(), names.cbegin());
+                FieldRepPrint(fields.cbegin(), fields.cend(), names.cbegin());
             };
 
             // Factory function to define an instruction declaratively
@@ -185,7 +177,7 @@ namespace SPIMDF {
             void Print() const {
                 std::array<int32_t, 3> fieldsArray{ rs, rt, imm };
 
-                FieldRep::Print(fieldsArray.cbegin(), fieldsArray.cend(), names.cbegin());
+                FieldRepPrint(fieldsArray.cbegin(), fieldsArray.cend(), names.cbegin());
             };
             
             // Factory function to define an instruction declaratively
@@ -235,7 +227,7 @@ namespace SPIMDF {
             }
 
             void Print() const {
-                FieldRep::Print(fields.cbegin(), fields.cend(), names.cbegin());
+                FieldRepPrint(fields.cbegin(), fields.cend(), names.cbegin());
             };
             
             // Factory function to define an instruction declaratively

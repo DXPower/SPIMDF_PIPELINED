@@ -73,7 +73,7 @@ EX_FUNC(SRA) {
 
 EX_FUNC(NOP) { }
 
-EX_NULL(BRK);
+EX_FUNC(BRK) { }
 
 // Category 2
 EX_FUNC(ADD) {

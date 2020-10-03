@@ -59,9 +59,11 @@ int32_t DecodeProgramDatum(const std::string& mach) {
 
 void SPIMDF::Disassemble(const char* filename, CPU& cpu) {
     std::ifstream file(filename);
+    std::ofstream output("disassembly.txt", std::ios::binary);
+    char buffer[200];
 
     if (!file.is_open()) {
-        printf("File not found\n");
+        output << "File not found" << std::endl;
         std::terminate();
     }
 
@@ -74,7 +76,9 @@ void SPIMDF::Disassemble(const char* filename, CPU& cpu) {
         Instruction instr = DecodeMachineCode(machCode);
 
         cpu.Instr(curAddr) = instr;
-        printf("%s\t%u\t%s\n", machCode.c_str(), curAddr, instr.ToString().c_str());
+       
+        sprintf(buffer, "%s\t%u\t%s\n", machCode.c_str(), curAddr, instr.ToString().c_str());
+        output << buffer;
 
         curAddr += 4;
         
@@ -86,10 +90,13 @@ void SPIMDF::Disassemble(const char* filename, CPU& cpu) {
         int32_t datum = DecodeProgramDatum(machCode);
 
         cpu.Mem(curAddr) = datum;
-        printf("%s\t%u\t%i\n", machCode.c_str(), curAddr, datum);
+
+        sprintf(buffer, "%s\t%u\t%i\n", machCode.c_str(), curAddr, datum);
+        output << buffer;
 
         curAddr += 4;
     }
 
-    printf("Done!\n");
+    output << std::flush;
+    output.close();
 }
