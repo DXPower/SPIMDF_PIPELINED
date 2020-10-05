@@ -40,24 +40,19 @@ xori 1011
 */
 
 #include <array>
-#include <functional>
-#include <tuple>
-#include <variant>
-#include <type_traits>
-#include <cstdint>
 #include <cmath>
-#include <string>
+#include <cstdint>
 #include <cstdio>
-#include <sstream>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <map>
+#include <sstream>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
-#include <map>
-#include <cstdio>
-#include <iostream>
-#include <fstream>
 
 namespace SPIMDF {
     // Convert 2s comp string to integer
@@ -917,7 +912,7 @@ namespace SPIMDF {
 
     std::unordered_map<std::string, std::pair<ISA::Opcode, std::function<DecodeFunc>>> opcodeDecoders {
         // Category 1
-        { "010000", { ISA::Opcode::J   , DecodeHelper<ISA::J   , ISA::detail::Decode_J   > } } 
+          { "010000", { ISA::Opcode::J   , DecodeHelper<ISA::J   , ISA::detail::Decode_J   > } } 
         , { "010001", { ISA::Opcode::JR  , DecodeHelper<ISA::JR  , ISA::detail::Decode_JR  > } } 
         , { "010010", { ISA::Opcode::BEQ , DecodeHelper<ISA::BEQ , ISA::detail::Decode_BEQ > } } 
         , { "010011", { ISA::Opcode::BLTZ, DecodeHelper<ISA::BLTZ, ISA::detail::Decode_BLTZ> } } 
