@@ -8,18 +8,31 @@
 
 using namespace SPIMDF;
 
-using voidFunc = void();
-
-struct Foo {
-    int x;
-    int y;
-};
-
-struct Foo foo = { .x = 2, .y = 3 };
-
 int main() {
     CPU cpu(256);
-    SPIMDF::Disassemble("sample.txt", cpu);
+    // SPIMDF::Disassemble("sample.txt", cpu);
+
+    uint32_t ia = 256;
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::SUB> (1, 2, 0);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::AND> (1, 2, 0);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::OR>  (1, 2, 0);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR> (1, 2, 0);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::SLT> (2, 1, 0);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 0, -50);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::ANDI>(1, 0, 0x00F2);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::ORI> (4, 0, 24);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::XORI>(1, 0, 0x00A4);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::SRL>(0, 0, 2);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::JR>(5);
+    cpu.Instr(ia += 4) = Instruction::Create<ISA::BRK> (0);
+
+    cpu.Instr(200) = Instruction::Create<ISA::ORI>(10, 10, 25);
+    cpu.Instr(204) = Instruction::Create<ISA::BRK>(10);
+
+    cpu.Reg(1) = 0x94;
+    cpu.Reg(2) = 24;
+    cpu.Reg(5) = 200;
+
 
     std::ofstream output("simulation.txt", std::ios::binary);
     char buffer[200];
