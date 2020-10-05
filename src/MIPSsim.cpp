@@ -394,6 +394,10 @@ namespace SPIMDF {
 
     class CPU;
 
+
+    namespace Executors { }
+    namespace Printers { }
+    
     class Instruction {
         public:
         using Executor_g = void(CPU& cpu, const Instruction&);
