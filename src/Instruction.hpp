@@ -36,10 +36,62 @@ namespace SPIMDF {
         std::variant<ISA::RType, ISA::IType, ISA::JType> format;
 
         public:
-
         template<class Format>
         Instruction(ISA::Opcode opcode, Format&& fm, const EP& ep)
-        : opcode(opcode), format(fm), executor(ep.first), printer(ep.second) { }
+            : opcode(opcode), format(fm), executor(ep.first), printer(ep.second)
+        { }
+
+        Instruction(const Instruction& copy)
+            : opcode(copy.opcode)
+            , executor(copy.executor)
+            , printer(copy.printer)
+            , format(copy.format)
+        { }
+
+        Instruction(Instruction&& other)
+            : opcode(other.opcode)
+            , executor(other.executor)
+            , printer(other.printer)
+            , format(other.format)
+        {
+            other.opcode = ISA::Opcode::NOP;
+            other.format = (*ISA::NOP)(0);
+            other.executor = Executors::NOP;
+            other.printer = Printers::NOP;
+        }
+
+        Instruction& operator=(const Instruction& copy) {
+            opcode = copy.opcode;
+            executor = copy.executor;
+            printer = copy.printer;
+            format = copy.format;
+
+            return *this;
+        }
+
+        Instruction& operator=(Instruction&& other) {
+            opcode = other.opcode;
+            executor = other.executor;
+            printer = other.printer;
+            format = other.format;
+
+            other.opcode = ISA::Opcode::NOP;
+            other.format = (*ISA::NOP)(0);
+            other.executor = Executors::NOP;
+            other.printer = Printers::NOP;
+
+            return *this;
+        }
+
+        std::string GetDepsString() const {
+            if (std::holds_alternative<ISA::RType>(format)) {
+                return ISA::DepsString(GetFormat<ISA::RType>());
+            } else if (std::holds_alternative<ISA::IType>(format)) {
+                return ISA::DepsString(GetFormat<ISA::IType>());
+            } else {
+                return "N/A";
+            }
+        }
 
         template<class Format>
         const Format& GetFormat() const {
@@ -50,8 +102,16 @@ namespace SPIMDF {
             executor(cpu, *this);
         }
 
+        bool IsJump() const {
+            return opcode == ISA::Opcode::BEQ
+                || opcode == ISA::Opcode::BGTZ
+                || opcode == ISA::Opcode::BLTZ
+                || opcode == ISA::Opcode::JR
+                || opcode == ISA::Opcode::JR;
+        }
+
         std::string ToString() const {
-            return printer(*this);
+            return printer(*this) + " " + GetDepsString();
         }
         
         void Print() const {

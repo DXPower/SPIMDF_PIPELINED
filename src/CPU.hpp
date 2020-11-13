@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Instruction.hpp"
+#include "Buffer.hpp"
+#include "Execs.hpp"
 #include <map>
 
 namespace SPIMDF {
@@ -14,7 +16,35 @@ namespace SPIMDF {
         uint32_t pc;
 
         public:
-        CPU(uint32_t pc = 0) : pc(pc) { };
+        // Queues
+        struct {
+            PreIssueQueue preIssue;
+            PreALUQueue preALU;
+            PostALUQueue postALU;
+            PreMemALUQueue preMemALU;
+            PreMemQueue preMem;
+            PostMemQueue postMem;
+        } queues;
+
+        // Executors
+        struct {
+            FetchExec fetch;
+            IssueExec issue;
+            ALUExec alu;
+            MemALUExec memALU;
+            MemExec mem;
+        } executors;
+
+        CPU(uint32_t pc = 0)
+        : pc(pc)
+        , executors({
+              FetchExec(*this)
+            , IssueExec(*this)
+            , ALUExec(*this)
+            , MemALUExec(*this)
+            , MemExec(*this) 
+        })
+        { };
 
         Instruction& Instr(uint32_t addr) { return program[addr]; };
         const Instruction& Instr(uint32_t addr) const { return program.at(addr); };
@@ -33,8 +63,11 @@ namespace SPIMDF {
 
         void Clock() {
             // Point PC to delay slot to support correct branching operation
-            pc += 4; // PC now points to delay slot
-            Instr(pc - 4).Execute(*this); // But execute the current instruction
+            // pc += 4; // PC now points to delay slot
+            // Instr(pc - 4).Execute(*this); // But execute the current instruction
+
+            executors.fetch.Consume();
+            executors.fetch.Produce();
 
             cycle++;
         };
@@ -42,6 +75,11 @@ namespace SPIMDF {
         // Sets PC = addr
         void Jump(uint32_t addr) {
             pc = addr;
+        }
+
+        // Sets PC = PC + offset
+        void RelJump(int32_t offset) {
+            pc = pc + offset;
         }
     };
 }
