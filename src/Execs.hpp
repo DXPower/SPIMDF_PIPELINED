@@ -2,6 +2,7 @@
 
 #include "ISA.hpp"
 #include "Instruction.hpp"
+#include <functional>
 
 namespace SPIMDF {
     class CPU;
@@ -38,7 +39,11 @@ namespace SPIMDF {
     };
 
     struct IssueExec final : Executor {
+        Instruction curInstr2;
+
         IssueExec(CPU& cpu) : Executor(cpu) { };
+
+        // bool MapActiveInstructions(const std::function<bool(const Instruction&)>& func) const;
 
         void Consume() override;
         void Produce() override;

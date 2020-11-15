@@ -83,14 +83,33 @@ namespace SPIMDF {
             return *this;
         }
 
-        std::string GetDepsString() const {
+        auto GetDeps() const {
             if (std::holds_alternative<ISA::RType>(format)) {
-                return ISA::DepsString(GetFormat<ISA::RType>());
+                return ISA::ParseFormatDeps(GetFormat<ISA::RType>());
             } else if (std::holds_alternative<ISA::IType>(format)) {
-                return ISA::DepsString(GetFormat<ISA::IType>());
+                return ISA::ParseFormatDeps(GetFormat<ISA::IType>());
             } else {
-                return "N/A";
+                return ISA::ParseFormatDeps(GetFormat<ISA::JType>());
             }
+        }
+
+        std::string GetDepsString() const {
+            const auto [dependencies, affects] = GetDeps();
+            std::string result = "";
+
+            if (dependencies.size() != 0) {
+                result += "\tDepends on: ";
+
+                for (const auto& r : dependencies) {
+                    result += " R" + std::to_string(r);
+                }
+
+            }
+
+            if (affects.has_value())
+                result += " Affects: R" + std::to_string(affects.value());
+
+            return result;
         }
 
         template<class Format>
@@ -108,6 +127,22 @@ namespace SPIMDF {
                 || opcode == ISA::Opcode::BLTZ
                 || opcode == ISA::Opcode::JR
                 || opcode == ISA::Opcode::JR;
+        }
+
+        bool IsMemAccess() const {
+            return opcode == ISA::Opcode::SW || opcode == ISA::Opcode::LW;
+        }
+
+        bool IsLoad() const {
+            return opcode == ISA::Opcode::LW;
+        }
+
+        bool IsStore() const {
+            return opcode == ISA::Opcode::SW;
+        }
+
+        bool IsNop() const {
+            return opcode == ISA::Opcode::NOP;
         }
 
         std::string ToString() const {

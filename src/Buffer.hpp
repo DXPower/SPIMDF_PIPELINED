@@ -2,6 +2,7 @@
 
 #include "Instruction.hpp"
 #include "opt_array.hpp"
+#include <sstream>
 
 namespace SPIMDF {
     namespace BufferEntry {
@@ -36,6 +37,22 @@ namespace SPIMDF {
     template<typename Entry_t, int N>
     struct Buffer {
         opt_array<Entry_t, N> entries;
+
+        std::string ToPrintingString() const {
+            std::stringstream ss;
+            
+            std::size_t i = 1;
+            for (const auto& entry : entries) {
+                ss << '\t' << "Entry " << i++ << ": ";
+
+                if (entry.has_value())
+                    ss << "[" << entry.value().instruction.ToString() << "]";
+
+                ss << '\n';
+            }
+
+            return ss.str();
+        }
     };
 
     using PreIssueQueue  = Buffer<BufferEntry::PreIssue, 4>;

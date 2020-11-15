@@ -72,12 +72,100 @@ bool FetchExec::IsExecuted() const {
     return executed.opcode != ISA::Opcode::NOP;
 }
 
+// bool IssueExec::MapActiveInstructions(const std::function<bool(const Instruction&)>& func) const {
+//     // #define LoopBuffer(q) for (const auto& entry : q.entries) { \
+//     //     if (!entry.has_value()) break; \
+//     //     if (!func(entry.value().instruction)) return false; \
+//     // }
+
+//     // LoopBuffer(cpu->queues.preALU);
+//     // LoopBuffer(cpu->queues.postALU);
+//     // LoopBuffer(cpu->queues.preMemALU);
+//     // LoopBuffer(cpu->queues.preMem);
+//     // LoopBuffer(cpu->queues.postMem);
+
+//     // return true;
+// }
+
+
 void IssueExec::Consume() {
+    auto& preIssEntries = cpu->queues.preIssue.entries;
     
+    auto instr1 = preIssEntries.end();
+    auto instr2 = preIssEntries.end();
+
+    for (auto it = preIssEntries.begin(); it != preIssEntries.end(); it++) {
+        auto& entry = *it;
+
+        if (!entry.has_value()) break;
+        
+        Instruction& potentialIssue = entry.value().instruction;
+
+        // Check for structural hazard with existing instructions in PreALU and PreMemALU
+        if (potentialIssue.IsMemAccess() && cpu->queues.preMemALU.entries.is_full())
+            continue;
+        
+        if (!potentialIssue.IsMemAccess() && cpu->queues.preALU.entries.is_full())
+            continue;
+
+        // Check if RAW or WAW hazard exists on active instructions (anything issued but not finished)
+        if (cpu->HasActiveRAW_WAW(potentialIssue))
+            continue;
+     
+        // Now check all previous not-issued instructions for hazards
+        for (auto pit = preIssEntries.begin(); pit != it; pit++) {
+            // Check RAW, WAW, WAR hazard
+            if (cpu->HasInterRAW_WAW_WAR(pit->value().instruction, potentialIssue))
+                goto SKIP_INSTR; // continue outer loop
+
+            // Make sure all loads only happen once previous stores have been issued (if it potentialIssue is a load)
+            // Additionally make sure any stores happen in order (if potentialIssue is a store)
+            if (potentialIssue.IsMemAccess() && pit->value().instruction.IsStore())
+                goto SKIP_INSTR; // continue outer loop
+        }
+
+        // No hazard, select this instruction.
+        // But, we can't change the array because we are iterating through it
+        if (instr1 == preIssEntries.end()) {
+            instr1 = it;
+        } else if (instr2 == preIssEntries.end()) {
+            // Now we need to check if this second instruction will have a structural hazard with the first instruction selected
+            if (instr1->value().instruction.IsMemAccess() == potentialIssue.IsMemAccess()) // If they are the same type of "access", then hazard
+                continue;
+
+            instr2 = it;
+            break; // Maximum of 2 instructions.
+        }
+
+        SKIP_INSTR: // For continuing outer loop from inner loop
+        ; // Noop
+    }
+
+    // Continue with the selected instructions
+    // Do second instruction first so that the iterator positions are not invalidated
+    //TODO: Check if HasInterWAW_WAR here is necessary
+    if (instr2 != preIssEntries.end() && !CPU::HasInterWAW_WAR(instr1->value().instruction, instr2->value().instruction)) 
+        curInstr2 = preIssEntries.pull(instr2).instruction;
+
+    if (instr1 != preIssEntries.end())
+        curInstr = preIssEntries.pull(instr1).instruction;
 }
 
 void IssueExec::Produce() {
-    
+    if (!curInstr.IsNop()) {
+        if (curInstr.IsMemAccess())
+            cpu->queues.preMemALU.entries.push_back(BufferEntry::PreMemALU{ std::move(curInstr) });
+        else
+            cpu->queues.preALU.entries.push_back(BufferEntry::PreALU{ std::move(curInstr) });
+
+        if (!curInstr2.IsNop()) {
+            if (curInstr2.IsMemAccess())
+                cpu->queues.preMemALU.entries.push_back(BufferEntry::PreMemALU{ std::move(curInstr2) });
+            else
+                cpu->queues.preALU.entries.push_back(BufferEntry::PreALU{ std::move(curInstr2) });
+        }
+    }
+        
 }
 
 void ALUExec::Consume() {

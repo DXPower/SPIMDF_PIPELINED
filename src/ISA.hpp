@@ -42,12 +42,13 @@ xori 1011
 #include <array>
 #include <functional>
 #include <tuple>
-#include <variant>
+#include <optional>
 #include <type_traits>
 #include <cstdint>
 #include <cmath>
 #include <string>
 #include <sstream>
+#include <variant>
 
 namespace SPIMDF {
     inline int32_t FromTwosComp(std::string mach) {
@@ -94,37 +95,71 @@ namespace SPIMDF {
         }
 
         template<typename Format>
-        std::string DepsString(const Format& format) {
-            const auto depStr = [&](Dep d) {
-                if (d == Dep::RT) return "R" + std::to_string(format.rt);
-                if (d == Dep::RS) return "R" + std::to_string(format.rs);
-                
-                if constexpr (std::is_same_v<Format, RType>) {
-                    if (d == Dep::RD) return "R" + std::to_string(format.rd);
+        uint8_t ParseRegFromFormat(const Format& format, Dep dep) {
+            if (dep == Dep::RT) return format.rt;
+            if (dep == Dep::RS) return format.rs;
+            if constexpr (std::is_same_v<Format, RType>) {
+                if (dep == Dep::RD) return format.rd;
+            }
+
+            return 255;
+        }
+
+        // Get deps in the format of [vector, uint8_t] => deps, affects
+        template<typename Format>
+        std::tuple<std::vector<uint8_t>, std::optional<uint8_t>> ParseFormatDeps(const Format& format) {
+            auto tup = std::tuple<std::vector<uint8_t>, std::optional<uint8_t>>({}, std::nullopt);
+            auto& [deps, affects] = tup;
+
+            if constexpr (std::is_same_v<Format, JType>) // JType has no dependencies/affects
+                return tup;
+            else {
+                deps.reserve(2);
+
+                // Get all depended registers
+                for (const Dep& d : format.dependencies) {
+                    if (d != Dep::None)
+                        deps.push_back(ParseRegFromFormat(format, d));
                 }
 
-                return std::string("None");
-            };
+                // Get affected register if it exists
+                if (format.affects != Dep::None)
+                    affects = ParseRegFromFormat(format, format.affects);
 
-            std::ostringstream ss;
+                return tup;
+            }
+        }
 
-            ss << "\tDepends on: " 
-                << depStr(format.dependencies[0]) << ", " 
-                << depStr(format.dependencies[1])
-                << ".\tAffects: " << depStr(format.affects);
+        // template<typename Format>
+        // std::string DepsString(const Format& format) {
+        //     if constexpr (std::is_same_v<Format, JType>)
+        //         return "N/A";
+        //     else {
+        //         const auto depStr = [&](Dep d) {
+        //             if (d == Dep::None) return std::string("None");
+        //             else return "R" + std::to_string(ParseRegFromFormat(format, d));
+        //         };
 
-            return ss.str();
-        } 
+        //         std::ostringstream ss;
+
+        //         ss << "\tDepends on: " 
+        //             << depStr(format.dependencies[0]) << ", " 
+        //             << depStr(format.dependencies[1])
+        //             << ".\tAffects: " << depStr(format.affects);
+
+        //         return ss.str();
+        //     }
+        // } 
 
         struct RType {
             private:
             std::array<uint_least8_t, 5> fields;
             inline const static std::array<const char*, 5> names = { "rs", "rt", "rd", "sa", "func" };
 
+            public:
             std::array<Dep, 2> dependencies;
             Dep affects;
 
-            public:
             uint_least8_t& rs   = fields[0];
             uint_least8_t& rt   = fields[1];
             uint_least8_t& rd   = fields[2];
@@ -178,7 +213,7 @@ namespace SPIMDF {
                     uint8_t curArg = 0;
 
                     std::array<uint8_t, 5> fields {
-                          static_cast<uint8_t>(IsVar<RS>()     ? args[curArg++] : RS)
+                          static_cast<uint8_t>(IsVar<RS>()   ? args[curArg++] : RS)
                         , static_cast<uint8_t>(IsVar<RT>()   ? args[curArg++] : RT)
                         , static_cast<uint8_t>(IsVar<RD>()   ? args[curArg++] : RD)
                         , static_cast<uint8_t>(IsVar<SA>()   ? args[curArg++] : SA)
@@ -188,9 +223,6 @@ namespace SPIMDF {
                     return RType(fields, { DEP1, DEP2 }, AFF);
                 }
             }
-
-            template<typename Format>
-            friend std::string DepsString(const Format& format);
         };
 
         struct IType {
@@ -198,10 +230,10 @@ namespace SPIMDF {
             std::tuple<uint_least8_t, uint_least8_t, int_least16_t> fields;
             inline const static std::array<const char*, 3> names = { "rs", "rt", "imm" };
 
+            public:
             std::array<Dep, 2> dependencies;
             Dep affects;
 
-            public:
             uint_least8_t&  rs  = std::get<0>(fields);
             uint_least8_t&  rt  = std::get<1>(fields);
             int_least16_t& imm = std::get<2>(fields);    
@@ -258,9 +290,6 @@ namespace SPIMDF {
                     return IType(fields, { DEP1, DEP2 }, AFF);
                 }
             }
-
-            template<typename Format>
-            friend std::string DepsString(const Format& format);
         };
         
         struct JType {

@@ -44,22 +44,35 @@ class opt_array : public std::array<std::optional<T>, N> {
     }
 
     // If there is room, return iterator to location. Else, return iterator to end()
-    T&& pop_front() {
+    T pop_front() {
        T popped = std::move((*this)[0].value()); // Get frontmost element
        (*this)[0] = std::nullopt;
 
        std::rotate(this->begin(), this->begin() + 1, this->end()); // Single rotate to left
 
-       return std::move(popped);
+       return popped;
     }
 
-    T&& pop_back() {
+    T pop_back() {
         auto it = std::prev(next_slot());
         T popped = std::move(it->value()); // Get backmost element
         
         *it = std::nullopt;
 
-        return std::move(popped);
+        return popped;
+    }
+
+    T pull(const typename std::array<std::optional<T>, N>::iterator& pos) {
+        T pulled = std::move(pos->value());
+
+        pos->reset();
+        std::rotate(pos, pos + 1, this->end()); // Rotate to the left from the removed position
+
+        return pulled;
+    }
+
+    void remove(const typename std::array<std::optional<T>, N>::iterator& pos) {
+        pull(pos);
     }
 
     bool is_empty() const {

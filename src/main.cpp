@@ -5,12 +5,38 @@
 #include "Instruction.hpp"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #include "opt_array.hpp"
 
 using namespace SPIMDF;
 
-int main() {
+
+int main(int argc, const char** argv) {
+    opt_array<int, 5> a;
+    a.push_back(0);
+    a.push_back(1);
+    a.push_back(2);
+    a.push_back(3);
+    a.push_back(4);
+    
+    for (auto it = a.begin(); it != a.end(); it++) {
+        if (*it == 3 || *it == 1) {
+            a.remove(it);
+        }
+    }
+
+    std::cout << "A contents: ";
+    for (const auto& x : a) {
+        if (x.has_value()) {
+            std::cout << " " << x.value();
+        } else {
+            std::cout << " None";
+        }
+    }
+
+    std::cout << std::endl;
+
     CPU cpu(256);
     SPIMDF::Disassemble("sample.txt", cpu);
 
@@ -61,16 +87,23 @@ int main() {
 
         // Pre-Issue Queue
         std::cout << "Pre-Issue Queue:\n";
-        std::size_t entryI = 0;
+        std::cout << cpu.queues.preIssue.ToPrintingString();
 
-        for (const auto& entry : cpu.queues.preIssue.entries) {
-            std::cout << "\tEntry " << entryI++ << ": ";
+        // Pre-MemALU Queue
+        std::cout << "Pre-ALU1 Queue:\n";
+        std::cout << cpu.queues.preMemALU.ToPrintingString();
 
-            if (entry.has_value())
-                std::cout << "[" << entry.value().instruction.ToString() << "]";
+        // Pre-Mem Queue
+        std::cout << "Pre-Mem Queue:\n";
+        std::cout << cpu.queues.preMem.ToPrintingString();
 
-            std::cout << "\n";
-        }
+        // Pre-ALU Queue
+        std::cout << "Pre-ALU2 Queue:\n";
+        std::cout << cpu.queues.preALU.ToPrintingString();
+
+        // Post-ALU Queue
+        std::cout << "Post-ALU2 Queue:\n";
+        std::cout << cpu.queues.postALU.ToPrintingString();
 
         // Print registers
         uint8_t base = 0;
@@ -112,7 +145,8 @@ int main() {
 
         if (hitBreak) break;
 
-        std::cin.ignore();
+        if (argc != 2 || strcmp(argv[1], "DEBUG") != 0)
+            std::cin.ignore();
     }
 
     // output.close();
