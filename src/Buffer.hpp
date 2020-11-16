@@ -16,7 +16,7 @@ namespace SPIMDF {
 
         struct PostALU {
             Instruction instruction = Instruction::Create<ISA::NOP>(5);
-            uint32_t result = 0;
+            int32_t result = 0;
         };
 
         struct PreMemALU {
@@ -25,12 +25,12 @@ namespace SPIMDF {
 
         struct PreMem {
             Instruction instruction = Instruction::Create<ISA::NOP>(5);
-            uint32_t result = 0;
+            uint32_t address = 0;
         };
 
         struct PostMem {
             Instruction instruction = Instruction::Create<ISA::NOP>(5);
-            uint32_t result = 0;
+            int32_t result = 0;
         };
     };
 
@@ -41,14 +41,19 @@ namespace SPIMDF {
         std::string ToPrintingString() const {
             std::stringstream ss;
             
-            std::size_t i = 1;
-            for (const auto& entry : entries) {
-                ss << '\t' << "Entry " << i++ << ": ";
+            if constexpr (N > 1) {
+                std::size_t i = 0;
+                for (const auto& entry : entries) {
+                    ss << '\t' << "Entry " << i++ << ":";
 
-                if (entry.has_value())
-                    ss << "[" << entry.value().instruction.ToString() << "]";
+                    if (entry.has_value())
+                        ss << " [" << entry.value().instruction.ToString() << "]";
 
-                ss << '\n';
+                    ss << '\n';
+                }
+            } else {
+                if (entries[0].has_value())
+                    ss << " [" << entries[0].value().instruction.ToString() << "]";
             }
 
             return ss.str();
@@ -58,9 +63,9 @@ namespace SPIMDF {
     using PreIssueQueue  = Buffer<BufferEntry::PreIssue, 4>;
  
     using PreALUQueue    = Buffer<BufferEntry::PreALU, 2>;
-    using PostALUQueue   = Buffer<BufferEntry::PostALU, 2>;
+    using PostALUQueue   = Buffer<BufferEntry::PostALU, 1>;
 
     using PreMemALUQueue = Buffer<BufferEntry::PreMemALU, 2>;
-    using PreMemQueue    = Buffer<BufferEntry::PreMem, 2>;
-    using PostMemQueue   = Buffer<BufferEntry::PostMem, 2>;
+    using PreMemQueue    = Buffer<BufferEntry::PreMem, 1>;
+    using PostMemQueue   = Buffer<BufferEntry::PostMem, 1>;
 }

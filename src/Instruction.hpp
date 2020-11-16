@@ -4,6 +4,7 @@
 #include "Microcode.hpp"
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -24,9 +25,13 @@ namespace SPIMDF {
 
     class Instruction {
         public:
-        using Executor_g = void(CPU& cpu, const Instruction&);
+        using ResultCB_g = void(int32_t);
+        using Executor_g = void(CPU& cpu, const Instruction&, const std::function<ResultCB_g>&);
         using Printer_g = std::string(const Instruction&);
         using EP = std::pair<std::function<Executor_g>, std::function<Printer_g>>;
+
+        using Deps_t = std::vector<uint8_t>;
+        using Affects_t = std::optional<uint8_t>;
 
         ISA::Opcode opcode;
 
@@ -83,6 +88,27 @@ namespace SPIMDF {
             return *this;
         }
 
+        template<class Format>
+        const Format& GetFormat() const {
+            return std::get<Format>(format);
+        }
+
+        void Execute(CPU& cpu) const {
+            executor(cpu, *this, [](int32_t) { });
+        }
+
+        int32_t ExecuteResult(CPU& cpu) const {
+            int32_t res = 0xDEAD;
+
+            const auto resultCB = [&](int32_t x) {
+                res = x;
+            };
+
+            executor(cpu, *this, resultCB);
+
+            return res;
+        }
+
         auto GetDeps() const {
             if (std::holds_alternative<ISA::RType>(format)) {
                 return ISA::ParseFormatDeps(GetFormat<ISA::RType>());
@@ -112,20 +138,11 @@ namespace SPIMDF {
             return result;
         }
 
-        template<class Format>
-        const Format& GetFormat() const {
-            return std::get<Format>(format);
-        }
-
-        void Execute(CPU& cpu) const {
-            executor(cpu, *this);
-        }
-
         bool IsJump() const {
             return opcode == ISA::Opcode::BEQ
                 || opcode == ISA::Opcode::BGTZ
                 || opcode == ISA::Opcode::BLTZ
-                || opcode == ISA::Opcode::JR
+                || opcode == ISA::Opcode::J
                 || opcode == ISA::Opcode::JR;
         }
 
@@ -145,8 +162,13 @@ namespace SPIMDF {
             return opcode == ISA::Opcode::NOP;
         }
 
-        std::string ToString() const {
-            return printer(*this) + " " + GetDepsString();
+        std::string ToString(bool ignoreNop = false) const {
+            if (opcode == ISA::Opcode::NOP && ignoreNop) {
+                return "";
+            }
+
+            // return printer(*this) + " " + GetDepsString();
+            return printer(*this);
         }
         
         void Print() const {

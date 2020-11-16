@@ -13,34 +13,44 @@ using namespace SPIMDF;
 
 
 int main(int argc, const char** argv) {
-    opt_array<int, 5> a;
-    a.push_back(0);
-    a.push_back(1);
-    a.push_back(2);
-    a.push_back(3);
-    a.push_back(4);
+    // opt_array<int, 5> a;
+    // a.push_back(0);
+    // a.push_back(1);
+    // a.push_back(2);
+    // a.push_back(3);
+    // a.push_back(4);
     
-    for (auto it = a.begin(); it != a.end(); it++) {
-        if (*it == 3 || *it == 1) {
-            a.remove(it);
-        }
-    }
+    // for (auto it = a.begin(); it != a.end(); it++) {
+    //     if (*it == 3 || *it == 1) {
+    //         a.remove(it);
+    //     }
+    // }
 
-    std::cout << "A contents: ";
-    for (const auto& x : a) {
-        if (x.has_value()) {
-            std::cout << " " << x.value();
-        } else {
-            std::cout << " None";
-        }
-    }
+    // std::cout << "A contents: ";
+    // for (const auto& x : a) {
+    //     if (x.has_value()) {
+    //         std::cout << " " << x.value();
+    //     } else {
+    //         std::cout << " None";
+    //     }
+    // }
 
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
     CPU cpu(256);
     SPIMDF::Disassemble("sample.txt", cpu);
+    // cpu.Mem(200) = 44;
 
-    // uint32_t ia = 256;
+    // uint32_t ia = 252;
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ORI>(0, 8, 200);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(0, 8, 200);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::LW>(10, 20, 200);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 2, 15);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 3, -5);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADD>(2, 3, 1);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ORI>(0, 7, 37);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::BRK>(0);
+
     // cpu.Instr(ia += 4) = Instruction::Create<ISA::SUB> (1, 2, 0);
     // cpu.Instr(ia += 4) = Instruction::Create<ISA::AND> (1, 2, 0);
     // cpu.Instr(ia += 4) = Instruction::Create<ISA::OR>  (1, 2, 0);
@@ -62,7 +72,7 @@ int main(int argc, const char** argv) {
     // cpu.Reg(5) = 200;
 
 
-    // std::ofstream output("simulation.txt", std::ios::binary);
+    std::ofstream output("simulation.txt", std::ios::binary);
     // auto& output = std::cout;
 
     char buffer[200];
@@ -71,43 +81,55 @@ int main(int argc, const char** argv) {
     bool hitBreak = false;
 
     while (true) {
-        std::cout << "--------------------\n";
+        output << "--------------------\n";
         
-        sprintf(buffer, "Cycle %lu:\t%u\t%s\n\n", cpu.GetCycle(), cpu.GetPC(), cpu.CurInstr().ToString().c_str());
-        std::cout << buffer;
+        // sprintf(buffer, "Cycle %lu:\t%u\t%s\n\n", cpu.GetCycle(), cpu.GetPC(), cpu.CurInstr().ToString().c_str());
+        sprintf(buffer, "Cycle %lu:\n\n", cpu.GetCycle());
+        output << buffer;
 
         // hitBreak = cpu.CurInstr().opcode == ISA::Opcode::BRK;
 
         cpu.Clock();
 
         // Execution Units
-        std::cout << "IF Unit:\n";
-        std::cout << "\tWaiting Instruction: " << cpu.executors.fetch.staller.ToString() << "\n";
-        std::cout << "\tExecuted Instruction: " << cpu.executors.fetch.executed.ToString() << "\n";
+        output << "IF Unit:\n";
+        if (cpu.executors.fetch.staller.IsNop())
+            output << "\tWaiting Instruction: \n"; 
+        else
+            output << "\tWaiting Instruction: [" << cpu.executors.fetch.staller.ToString() << "]\n";
+
+        if (cpu.executors.fetch.executed.IsNop())
+            output << "\tExecuted Instruction: \n";
+        else
+            output << "\tExecuted Instruction: [" << cpu.executors.fetch.executed.ToString() << "]\n";
 
         // Pre-Issue Queue
-        std::cout << "Pre-Issue Queue:\n";
-        std::cout << cpu.queues.preIssue.ToPrintingString();
+        output << "Pre-Issue Queue:\n";
+        output << cpu.queues.preIssue.ToPrintingString();
 
         // Pre-MemALU Queue
-        std::cout << "Pre-ALU1 Queue:\n";
-        std::cout << cpu.queues.preMemALU.ToPrintingString();
+        output << "Pre-ALU1 Queue:\n";
+        output << cpu.queues.preMemALU.ToPrintingString();
 
         // Pre-Mem Queue
-        std::cout << "Pre-Mem Queue:\n";
-        std::cout << cpu.queues.preMem.ToPrintingString();
+        output << "Pre-MEM Queue:";
+        output << cpu.queues.preMem.ToPrintingString() << '\n';
+
+        // Post-Mem Queue
+        output << "Post-MEM Queue:";
+        output << cpu.queues.postMem.ToPrintingString() << '\n';
 
         // Pre-ALU Queue
-        std::cout << "Pre-ALU2 Queue:\n";
-        std::cout << cpu.queues.preALU.ToPrintingString();
+        output << "Pre-ALU2 Queue:\n";
+        output << cpu.queues.preALU.ToPrintingString();
 
         // Post-ALU Queue
-        std::cout << "Post-ALU2 Queue:\n";
-        std::cout << cpu.queues.postALU.ToPrintingString();
+        output << "Post-ALU2 Queue:";
+        output << cpu.queues.postALU.ToPrintingString() << '\n';
 
         // Print registers
         uint8_t base = 0;
-        std::cout << "Registers\n";
+        output << "\nRegisters\n";
 
         for (uint8_t row = 0; row < 4; row++) {
             sprintf(
@@ -118,38 +140,38 @@ int main(int argc, const char** argv) {
                 , cpu.Reg(base + 4), cpu.Reg(base + 5), cpu.Reg(base + 6), cpu.Reg(base + 7)
             );
 
-            std::cout << buffer;
+            output << buffer;
 
             base += 8;
         }
 
         // Print memory
         uint8_t word = 0;
-        std::cout << "\nData\n";
+        output << "\nData\n";
 
         for (auto [addr, datum] : cpu.GetAllMem()) {
             if (word == 0)
-                std::cout << addr << ":\t";
+                output << addr << ":\t";
             
-            std::cout << datum;
+            output << datum;
 
             if (word++ != 7)
-                std::cout << "\t";
+                output << "\t";
             else {
                 word = 0;
-                std::cout << "\n";
+                output << "\n";
             }
         }
 
-        std::cout << '\n' << std::flush;
+        output << std::flush;
 
-        if (hitBreak) break;
+        if (cpu.executors.fetch.isBroken) break;
 
-        if (argc != 2 || strcmp(argv[1], "DEBUG") != 0)
-            std::cin.ignore();
+        // if (argc != 2 || strcmp(argv[1], "DEBUG") != 0)
+        //     std::cin.ignore();
     }
 
-    // output.close();
+    output.close();
 }
 
 // if (a.is_empty()) printf("Is empty\n");

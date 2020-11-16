@@ -6,7 +6,7 @@
 
 using namespace SPIMDF;
 
-#define EX_FUNC(X) void Executors::X(CPU& cpu, const Instruction& in)
+#define EX_FUNC(X) void Executors::X(CPU& cpu, const Instruction& in,  const std::function<void(int32_t)>& resultCB)
 #define PR_FUNC(X) std::string Printers::X(const Instruction& in)
 
 #define EX_NULL(X) EX_FUNC(X) { printf(#X " executor undefined"); }
@@ -18,7 +18,7 @@ EX_FUNC(J) {
     const ISA::JType& format = in.GetFormat<ISA::JType>();
     cpu.Jump((cpu.GetPC() & 0xF0000000) | (format.index << 2));
 }
-
+ 
 EX_FUNC(JR) {
     const auto& format = in.GetFormat<ISA::RType>();
     cpu.Jump(cpu.Reg(format.rs));
@@ -47,28 +47,30 @@ EX_FUNC(BGTZ) {
 
 EX_FUNC(SW) {
     const auto& format = in.GetFormat<ISA::IType>();
-    cpu.Mem(cpu.Reg(format.rs) + format.imm) = cpu.Reg(format.rt);
+    // cpu.Mem(cpu.Reg(format.rs) + format.imm) = cpu.Reg(format.rt);
+    resultCB((int32_t) (cpu.Reg(format.rs) + format.imm)); // Calculate address
 }
 
 EX_FUNC(LW) {
     const auto& format = in.GetFormat<ISA::IType>();
-    cpu.Reg(format.rt) = cpu.Mem(cpu.Reg(format.rs) + format.imm);
+    // cpu.Reg(format.rt) = cpu.Mem(cpu.Reg(format.rs) + format.imm);
+    resultCB((int32_t) (cpu.Reg(format.rs) + format.imm)); // Calculate address
 }
 
 EX_FUNC(SLL) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rt) << format.sa;
+    resultCB(cpu.Reg(format.rt) << format.sa);
 }
 
 EX_FUNC(SRL) {
     const auto& format = in.GetFormat<ISA::RType>();
     // Cast to unsigned int to do guarantee logical shift, then shift by shamt
-    cpu.Reg(format.rd) = static_cast<int32_t>(static_cast<uint32_t>(cpu.Reg(format.rt)) >> format.sa);
+    resultCB(static_cast<int32_t>(static_cast<uint32_t>(cpu.Reg(format.rt)) >> format.sa));
 }
 
 EX_FUNC(SRA) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rt) >> format.sa;
+    resultCB(cpu.Reg(format.rt) >> format.sa);
 }
 
 EX_FUNC(NOP) { }
@@ -78,62 +80,64 @@ EX_FUNC(BRK) { }
 // Category 2
 EX_FUNC(ADD) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rs) + cpu.Reg(format.rt);
+    // cpu.Reg(format.rd) = cpu.Reg(format.rs) + cpu.Reg(format.rt);
+    resultCB(cpu.Reg(format.rs) + cpu.Reg(format.rt));
 }
 
 EX_FUNC(SUB) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rs) - cpu.Reg(format.rt);
+    resultCB(cpu.Reg(format.rs) - cpu.Reg(format.rt));
 }
 
 EX_FUNC(MUL) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rs) * cpu.Reg(format.rt);
+    resultCB(cpu.Reg(format.rs) * cpu.Reg(format.rt));
 }
 
 EX_FUNC(AND) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rs) & cpu.Reg(format.rt);
+    resultCB(cpu.Reg(format.rs) & cpu.Reg(format.rt));
 }
 
 EX_FUNC(OR) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rs) | cpu.Reg(format.rt);
+    resultCB(cpu.Reg(format.rs) | cpu.Reg(format.rt));
 } 
 
 EX_FUNC(XOR) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rs) ^ cpu.Reg(format.rt);
+    resultCB(cpu.Reg(format.rs) ^ cpu.Reg(format.rt));
 }
 
 EX_FUNC(NOR) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = ~(cpu.Reg(format.rs) | cpu.Reg(format.rt));
+    resultCB( ~(cpu.Reg(format.rs) | cpu.Reg(format.rt)) );
 }
 
 EX_FUNC(SLT) {
     const auto& format = in.GetFormat<ISA::RType>();
-    cpu.Reg(format.rd) = cpu.Reg(format.rs) < cpu.Reg(format.rt);
+    resultCB(cpu.Reg(format.rs) < cpu.Reg(format.rt));
 }
 
 EX_FUNC(ADDI) {
     const auto& format = in.GetFormat<ISA::IType>();
-    cpu.Reg(format.rt) = cpu.Reg(format.rs) + format.imm;
+    // cpu.Reg(format.rt) = cpu.Reg(format.rs) + format.imm;
+    resultCB(cpu.Reg(format.rs) + format.imm);
 }
 
 EX_FUNC(ANDI) {
     const auto& format = in.GetFormat<ISA::IType>();
-    cpu.Reg(format.rt) = cpu.Reg(format.rs) & static_cast<uint32_t>(format.imm); // Zero extend immediate
+    resultCB(cpu.Reg(format.rs) & static_cast<uint32_t>(format.imm)); // Zero extend immediate
 }
 
 EX_FUNC(ORI) {
     const auto& format = in.GetFormat<ISA::IType>();
-    cpu.Reg(format.rt) = cpu.Reg(format.rs) | static_cast<uint32_t>(format.imm); // Zero extend immediate
+    resultCB(cpu.Reg(format.rs) | static_cast<uint32_t>(format.imm)); // Zero extend immediate
 }
 
 EX_FUNC(XORI) {
     const auto& format = in.GetFormat<ISA::IType>();
-    cpu.Reg(format.rt) = cpu.Reg(format.rs) ^ static_cast<uint32_t>(format.imm); // Zero extend immediate
+    resultCB(cpu.Reg(format.rs) ^ static_cast<uint32_t>(format.imm)); // Zero extend immediate
 }
 
 std::string String_RType(const char* opcode, const ISA::RType& format) {

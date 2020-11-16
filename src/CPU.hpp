@@ -6,6 +6,12 @@
 #include <map>
 
 namespace SPIMDF {
+    enum class Hazard {
+          RAW
+        , WAW
+        , WAR
+    };
+
     class CPU {
         struct Register_t {
             int32_t value = 0;
@@ -38,6 +44,7 @@ namespace SPIMDF {
             ALUExec alu;
             MemALUExec memALU;
             MemExec mem;
+            WritebackExec writeback;
         } executors;
 
         CPU(uint32_t pc = 0)
@@ -48,6 +55,7 @@ namespace SPIMDF {
             , ALUExec(*this)
             , MemALUExec(*this)
             , MemExec(*this) 
+            , WritebackExec(*this)
         })
         { };
 
@@ -72,17 +80,19 @@ namespace SPIMDF {
         uint64_t GetCycle() const { return cycle; };
 
         void Clock() {
-            // Point PC to delay slot to support correct branching operation
-            // pc += 4; // PC now points to delay slot
-            // Instr(pc - 4).Execute(*this); // But execute the current instruction
-
             executors.fetch.Consume();
             executors.issue.Consume();
             executors.alu.Consume();
+            executors.memALU.Consume();
+            executors.mem.Consume();
+            executors.writeback.Consume();
 
             executors.fetch.Produce();
             executors.issue.Produce();
             executors.alu.Produce();
+            executors.memALU.Produce();
+            executors.mem.Produce();
+            executors.writeback.Produce();
 
             cycle++;
         };
@@ -97,56 +107,111 @@ namespace SPIMDF {
             pc = pc + offset;
         }
 
-        bool HasActiveRAW_WAW(const Instruction& instr) const {
+        // Called when an instruction is either issued or flushed from pipeline
+        void SetLocks(const Instruction& instr, bool flag) {
+            const auto [deps, affects] = instr.GetDeps();
+
+            for (const auto& r : deps) {
+                SetRegPendingRead(r, flag);
+            }
+
+            if (affects.has_value())
+                SetRegPendingWrite(affects.value(), flag);
+        }
+
+        // Called when an instruction is issued and we have to update the locks
+        void AddLocks(const Instruction& instr) {
+            SetLocks(instr, true);
+        }
+
+        // Called when an instruction is flushed and we have to update the locks
+        void RemoveLocks(const Instruction& instr) {
+            SetLocks(instr, false);
+        }
+
+        template<Hazard... Args>
+        bool HasActiveHazard(const Instruction& instr) const {
+            static_assert(sizeof...(Args) > 0);
+
             const auto [deps, affects] = instr.GetDeps();
 
             // Check RAW
-            for (const auto& r : deps) {
-                if (IsRegPendingWrite(r))
-                    return true;
+            if constexpr (((Args == Hazard::RAW) || ...)) {
+                for (const auto& r : deps) {
+                    if (IsRegPendingWrite(r))
+                        return true;
+                }
             }
 
+            if (!affects.has_value()) return false; // Cannot have WAW or WAR if there are no affects
+                
             // Check WAW
-            if (!affects.has_value()) return false;
-            else return IsRegPendingWrite(affects.value());
-        }
-
-
-        static bool HasInterWAW_WAR(const Instruction& earlier, const Instruction& later) {
-            const auto [eDeps, eAffects] = earlier.GetDeps();
-            const auto [lDeps, lAffects] = later.GetDeps();
-
-            if (!lAffects.has_value()) return false;
+            if constexpr (((Args == Hazard::WAW) || ...)) {
+                if (IsRegPendingWrite(affects.value()))
+                    return true;
+            }
 
             // Check WAR
-            for (const auto& r : eDeps) {
-                if (r == lAffects)
-                    return true;
+            if constexpr (((Args == Hazard::WAR) || ...)) {
+                return IsRegPendingRead(affects.value());
+                    
             }
 
-            // Check WAW
-            return lAffects == eAffects;
+            return false;
         }
 
-        static bool HasInterRAW_WAW_WAR(const Instruction& earlier, const Instruction& later) {
+        template<Hazard... Args>
+        static bool HasInterHazard(const Instruction& earlier, const Instruction& later) {
+            static_assert(sizeof...(Args) > 0);
+
             const auto [eDeps, eAffects] = earlier.GetDeps();
             const auto [lDeps, lAffects] = later.GetDeps();
 
             // Check RAW
-            for (const auto& r : lDeps) {
-                if (eAffects == r)
-                    return true;
+            if constexpr (((Args == Hazard::RAW) || ...)) {
+                for (const auto& r : lDeps) {
+                    if (r == eAffects)
+                        return true;
+                }
             }
 
+            if (!lAffects.has_value()) return false; // Cannot have WAR or WAW if there is no affects
+
             // Check WAR
-            for (const auto& r : eDeps) {
-                if (r == lAffects)
-                    return true;
+            if constexpr (((Args == Hazard::WAR) || ...)) {
+                for (const auto& r : eDeps) {
+                    if (r == lAffects)
+                        return true;
+                }
             }
 
             // Check WAW
-            if (!eAffects.has_value() || !lAffects.has_value()) return false;
-            return lAffects.value() == eAffects.value();
+            if constexpr (((Args == Hazard::WAW) || ...)) {
+                return lAffects == eAffects;
+            }
+
+            return false;
         }
+
+        // static bool HasInterRAW_WAW_WAR(const Instruction& earlier, const Instruction& later) {
+        //     const auto [eDeps, eAffects] = earlier.GetDeps();
+        //     const auto [lDeps, lAffects] = later.GetDeps();
+
+        //     // Check RAW
+        //     for (const auto& r : lDeps) {
+        //         if (eAffects == r)
+        //             return true;
+        //     }
+
+        //     // Check WAR
+        //     for (const auto& r : eDeps) {
+        //         if (r == lAffects)
+        //             return true;
+        //     }
+
+        //     // Check WAW
+        //     if (!eAffects.has_value() || !lAffects.has_value()) return false;
+        //     return lAffects.value() == eAffects.value();
+        // }
     };
 }

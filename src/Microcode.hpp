@@ -1,12 +1,14 @@
 #pragma once
 
+#include <functional>
+#include <optional>
 #include <string>
 
 namespace SPIMDF {
     class Instruction;
     class CPU;
 
-    #define DEF_EX(X) void X(CPU& cpu, const Instruction& instr);
+    #define DEF_EX(X) void X(CPU& cpu, const Instruction& instr, const std::function<void(int32_t)>&);
     #define DEF_PR(X) std::string X(const Instruction& instr);
 
     namespace Executors {
