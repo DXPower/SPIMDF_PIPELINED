@@ -13,35 +13,43 @@ using namespace SPIMDF;
 
 
 int main(int argc, const char** argv) {
-    // opt_array<int, 5> a;
-    // a.push_back(0);
-    // a.push_back(1);
-    // a.push_back(2);
-    // a.push_back(3);
-    // a.push_back(4);
-    
-    // for (auto it = a.begin(); it != a.end(); it++) {
-    //     if (*it == 3 || *it == 1) {
-    //         a.remove(it);
-    //     }
-    // }
-
-    // std::cout << "A contents: ";
-    // for (const auto& x : a) {
-    //     if (x.has_value()) {
-    //         std::cout << " " << x.value();
-    //     } else {
-    //         std::cout << " None";
-    //     }
-    // }
-
-    // std::cout << std::endl;
-
     CPU cpu(256);
     SPIMDF::Disassemble("sample.txt", cpu);
     // cpu.Mem(200) = 44;
 
     // uint32_t ia = 252;
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(0, 0, 1);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 1, 1);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(2, 2, 400);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(3, 3, 10);
+
+    // // Store initial values
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(2, 0, 0);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(2, 1, 4);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(2, 2, 8);
+    
+    // // Begin of loop
+    // // cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR>(0, 1, 0);
+    // // cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR>(0, 1, 1);
+    // // cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR>(0, 1, 0);
+
+    // // cpu.Instr(ia += 4) = Instruction::Create<ISA::LW>(2, 0, -4);
+    // // cpu.Instr(ia += 4) = Instruction::Create<ISA::LW>(2, 1, -8);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(3, 3, -1);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADD>(0, 1, 10);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(2, 10, 0);
+
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 0, 0);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(10, 1, 0);
+    // // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADD>(0, 1, 1);
+
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(2, 2, 4);
+
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::BEQ>(3, 20, 1);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::J>(71);
+    // cpu.Instr(ia += 4) = Instruction::Create<ISA::BRK>(0);
+
+
     // cpu.Instr(ia += 4) = Instruction::Create<ISA::ORI>(0, 8, 200);
     // cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(0, 8, 200);
     // cpu.Instr(ia += 4) = Instruction::Create<ISA::LW>(10, 20, 200);
@@ -94,12 +102,12 @@ int main(int argc, const char** argv) {
         // Execution Units
         output << "IF Unit:\n";
         if (cpu.executors.fetch.staller.IsNop())
-            output << "\tWaiting Instruction: \n"; 
+            output << "\tWaiting Instruction:\n"; 
         else
             output << "\tWaiting Instruction: [" << cpu.executors.fetch.staller.ToString() << "]\n";
 
         if (cpu.executors.fetch.executed.IsNop())
-            output << "\tExecuted Instruction: \n";
+            output << "\tExecuted Instruction:\n";
         else
             output << "\tExecuted Instruction: [" << cpu.executors.fetch.executed.ToString() << "]\n";
 

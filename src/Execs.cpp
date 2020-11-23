@@ -144,16 +144,21 @@ void IssueExec::Consume() {
     // Continue with the selected instructions
     // Do second instruction first so that the iterator positions are not invalidated
     //TODO: Check if HasInterWAW_WAR here is necessary
-    if (instr2 != preIssEntries.end() && !CPU::HasInterHazard<Hazard::WAW, Hazard::WAR>(instr1->value().instruction, instr2->value().instruction)) 
+    // if (instr2 != preIssEntries.end() && !CPU::HasInterHazard<Hazard::WAW, Hazard::WAR>(instr1->value().instruction, instr2->value().instruction)) {
+    if (instr2 != preIssEntries.end()) {
         slot2 = preIssEntries.pull(instr2).instruction;
+        cpu->AddLocks(slot2); // Need to add locks here because a branch instruction will not check slots for hazards on execution
+    }
 
-    if (instr1 != preIssEntries.end())
+    if (instr1 != preIssEntries.end()) {
         slot1 = preIssEntries.pull(instr1).instruction;
+        cpu->AddLocks(slot1);
+    }
 }
 
 void IssueExec::Produce() {
     if (!slot1.IsNop()) {
-        cpu->AddLocks(slot1);
+        // cpu->AddLocks(slot1);
 
         if (slot1.IsMemAccess())
             cpu->queues.preMemALU.entries.push_back(BufferEntry::PreMemALU{ std::move(slot1) });
@@ -161,7 +166,7 @@ void IssueExec::Produce() {
             cpu->queues.preALU.entries.push_back(BufferEntry::PreALU{ std::move(slot1) });
 
         if (!slot2.IsNop()) {
-            cpu->AddLocks(slot2);
+            // cpu->AddLocks(slot2);
 
             if (slot2.IsMemAccess())
                 cpu->queues.preMemALU.entries.push_back(BufferEntry::PreMemALU{ std::move(slot2) });
