@@ -77,6 +77,9 @@ namespace SPIMDF {
 
     namespace ISA {
         using namespace std;
+        struct RType;
+        struct IType;
+        struct JType;
 
         inline constexpr uint64_t Var = static_cast<uint64_t>(-1);
         // The following are definitions for defining dependencies and affections
@@ -117,7 +120,7 @@ namespace SPIMDF {
         // Get deps in the format of [vector, uint8_t] => deps, affects
         template<typename Format>
         std::tuple<std::vector<uint8_t>, std::optional<uint8_t>> ParseFormatDeps(const Format& format) {
-            auto tup = std::tuple<std::vector<uint8_t>, std::optional<uint8_t>>({}, std::nullopt);
+            auto tup = std::tuple<std::vector<uint8_t>, std::optional<uint8_t>>(std::vector<uint8_t>(), std::nullopt);
             auto& [deps, affects] = tup;
 
             if constexpr (std::is_same_v<Format, JType>) // JType has no dependencies/affects
@@ -1830,74 +1833,9 @@ using namespace SPIMDF;
 
 int main(int argc, const char** argv) {
     CPU cpu(256);
-    // Disassemble("sample.txt", cpu);
-    // cpu.Mem(200) = 44;
-
-    uint32_t ia = 252;
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(0, 0, 1);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 1, 1);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(2, 2, 400);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(3, 3, 10);
-
-    // Store initial values
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(2, 0, 0);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(2, 1, 4);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(2, 2, 8);
-    
-    // Begin of loop
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR>(0, 1, 0);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR>(0, 1, 1);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR>(0, 1, 0);
-
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::LW>(2, 0, -4);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::LW>(2, 1, -8);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(3, 3, -1);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADD>(0, 1, 10);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(2, 10, 0);
-
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 0, 0);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(10, 1, 0);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADD>(0, 1, 1);
-
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(2, 2, 4);
-
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::BEQ>(3, 20, 1);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::J>(71);
-    cpu.Instr(ia += 4) = Instruction::Create<ISA::BRK>(0);
-
-
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ORI>(0, 8, 200);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SW>(0, 8, 200);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::LW>(10, 20, 200);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 2, 15);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 3, -5);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADD>(2, 3, 1);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ORI>(0, 7, 37);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::BRK>(0);
-
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SUB> (1, 2, 0);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::AND> (1, 2, 0);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::OR>  (1, 2, 0);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::XOR> (1, 2, 0);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SLT> (2, 1, 0);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ADDI>(1, 0, -50);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ANDI>(1, 0, 0x00F2);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::ORI> (4, 0, 24);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::XORI>(1, 0, 0x00A4);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::SRL>(0, 0, 2);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::JR>(5);
-    // cpu.Instr(ia += 4) = Instruction::Create<ISA::BRK> (0);
-
-    // cpu.Instr(200) = Instruction::Create<ISA::ORI>(10, 10, 25);
-    // cpu.Instr(204) = Instruction::Create<ISA::BRK>(10);
-
-    // cpu.Reg(1) = 0x94;
-    // cpu.Reg(2) = 24;
-    // cpu.Reg(5) = 200;
-
+    Disassemble(argv[1], cpu);
 
     std::ofstream output("simulation.txt", std::ios::binary);
-    // auto& output = std::cout;
 
     char buffer[200];
     std::string temp;
@@ -1907,11 +1845,8 @@ int main(int argc, const char** argv) {
     while (true) {
         output << "--------------------\n";
         
-        // sprintf(buffer, "Cycle %lu:\t%u\t%s\n\n", cpu.GetCycle(), cpu.GetPC(), cpu.CurInstr().ToString().c_str());
-        sprintf(buffer, "Cycle %llu:\n\n", cpu.GetCycle());
+        sprintf(buffer, "Cycle %lu:\n\n", cpu.GetCycle());
         output << buffer;
-
-        // hitBreak = cpu.CurInstr().opcode == ISA::Opcode::BRK;
 
         cpu.Clock();
 
@@ -1990,9 +1925,6 @@ int main(int argc, const char** argv) {
         output << std::flush;
 
         if (cpu.executors.fetch.isBroken) break;
-
-        // if (argc != 2 || strcmp(argv[1], "DEBUG") != 0)
-        //     std::cin.ignore();
     }
 
     output.close();
